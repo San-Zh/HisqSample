@@ -96,7 +96,7 @@ struct HisqDslashImpl<ODD, EVEN> {
 
 // 特化模板结构体 HisqDslashImpl<FULL, FULL>，用于实现FULL类型的Dslash操作
 // 静态模板方法 call，用于执行FULL类型的Dslash操作
-#ifndef DEBUG
+#ifndef Debug
 template <>
 struct HisqDslashImpl<FULL, FULL> {
     template <typename T>

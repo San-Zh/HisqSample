@@ -96,10 +96,10 @@ class Field {
     virtual       Layout &layout()      { return this->_lat; }
 
     virtual const T &data(int i) const { return this->_p[i]; }
-    virtual       T &data(int i) { return this->_p[i]; }
+    virtual       T &data(int i)       { return this->_p[i]; }
 
     virtual const T &operator()(int i) const { return this->data(i); }
-    virtual       T &operator()(int i) { return this->data(i); }
+    virtual       T &operator()(int i)       { return this->data(i); }
 
     virtual const T &operator()(int x, int y, int z, int t) const { return this->_p[evenoddIndex(x, y, z, t, this->layout())]; }
     virtual       T &operator()(int x, int y, int z, int t)       { return this->_p[evenoddIndex(x, y, z, t, this->layout())]; }
@@ -143,6 +143,42 @@ class SU3Field : public Field<mat33<std::complex<T>>> {
             this->data(i)[2][0] = std::complex<T>((T) rand() * _rn, (T) rand() * _rn);
             this->data(i)[2][1] = std::complex<T>((T) rand() * _rn, (T) rand() * _rn);
             this->data(i)[2][2] = std::complex<T>((T) rand() * _rn, (T) rand() * _rn);
+        }
+    }
+};
+
+// U4 class for gauge field
+// One U4 data for each lattice site, with 4 components of su3 matrix (mat33)
+// U4[mu][r][c], mu=0,1,2,3, r=0,1,2, c=0,1,2
+template <typename T>
+class U4 {
+  public:
+    U4() = default;
+    ~U4() = default;
+
+    // clang-format off
+    inline const mat33<std::complex<T>> & &operator[](int i) const { return this->data[i]; }
+    inline       T &operator[](int i)       { return this->data[i]; }
+    // clang-format on
+
+  private:
+    mat33<std::complex<T>> data[4];
+};
+
+template <typename T>
+class GaugeField : public Field<U4<mat33<std::complex<T>>>> {
+  public:
+    using Field<U4<std::complex<T>>>::Field; // inherit constructor
+
+    void random()
+    {
+        T _rn = 1.0 / RAND_MAX;
+        for (int i = 0; i < layout.vol(); i++) {
+            for (int mu = 0; mu < 4; mu++) {
+                for (int r = 0; r < 3; r++) {
+                    for (int c = 0; c < 3; c++) { this->data(i)[mu][r][c] = std::complex<T>((T) rand() * _rn, (T) rand() * _rn); }
+                }
+            }
         }
     }
 };
