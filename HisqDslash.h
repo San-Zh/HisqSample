@@ -17,8 +17,6 @@
 #include <omp.h>
 #include "Field.h"
 
-enum EvenOdd_t { EVEN, ODD, FULL };
-
 // 模板结构体 HisqDslashImpl，用于实现不同类型的Dslash操作
 template <EvenOdd_t Leo, EvenOdd_t Reo>
 struct HisqDslashImpl {
@@ -42,14 +40,14 @@ struct HisqDslashImpl<EVEN, ODD> {
                 for (int y = 0; y < layout.Y; y++) {
                     switch ((t + z + y) % 2) {
                     case EVEN:
-                        for (int x = 0; x < layout.X; x += 2) {
+                        for (int x = 0; x < layout.X; x += 2) { // EVEN(x) + EVEN(y+z+t) == EVEN
                             int xf = (x + 1 + layout.X) % layout.X;
                             int xb = (x - 1 + layout.X) % layout.X;
                             spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
                         }
                         break;
                     case ODD:
-                        for (int x = 1; x < layout.X; x += 2) {
+                        for (int x = 1; x < layout.X; x += 2) { // ODD(x) + ODD(y+z+t) == EVEN
                             int xf = (x + 1 + layout.X) % layout.X;
                             int xb = (x - 1 + layout.X) % layout.X;
                             spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
@@ -74,14 +72,14 @@ struct HisqDslashImpl<ODD, EVEN> {
                 for (int y = 0; y < layout.Y; y++) {
                     switch ((t + z + y) % 2) {
                     case EVEN:
-                        for (int x = 1; x < layout.X; x += 2) {
+                        for (int x = 1; x < layout.X; x += 2) { // ODD(x) + EVEN(y+z+t) == ODD
                             int xf = (x + 1 + layout.X) % layout.X;
                             int xb = (x - 1 + layout.X) % layout.X;
                             spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
                         }
                         break;
                     case ODD:
-                        for (int x = 0; x < layout.X; x += 2) {
+                        for (int x = 0; x < layout.X; x += 2) { // EVEN(x) + ODD(y+z+t) == ODD
                             int xf = (x + 1 + layout.X) % layout.X;
                             int xb = (x - 1 + layout.X) % layout.X;
                             spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));

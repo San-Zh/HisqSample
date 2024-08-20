@@ -21,12 +21,14 @@ template <typename T> class vec3;
 template <typename T>
 class vec3 {
   public:
-    vec3() = default;
+    vec3()  = default;
     ~vec3() = default;
+    // clang-format off
 
-    T &operator[](int i) { return this->data[i]; }
-    const T &operator[](int i) const { return this->data[i]; }
+    inline       T &operator[](int i)       { return this->data[i]; }
+    inline const T &operator[](int i) const { return this->data[i]; }
 
+    // clang-format on
     // inline void zero()
     // {
     //     this->data[0] = 0.0;

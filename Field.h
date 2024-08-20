@@ -16,58 +16,9 @@
 #include <iostream>
 #include <omp.h>
 #include "vec3.h"
+#include "vec4.h"
 #include "mat33.h"
-
-struct Layout {
-    int X, Y, Z, T;
-    int volFull, volHalf;
-    Layout() = default;
-    Layout(const int _X, const int _Y, const int _Z, const int _T) { resize(_X, _Y, _Z, _T); }
-    Layout(const int L) { resize(L, L, L, L); }
-    Layout(const Layout &other) { *this = other; } // copy constructor
-
-    int &vol() { return this->volFull; }
-    const int &vol() const { return this->volFull; }
-    int &volh() { return this->volHalf; }
-    const int &volh() const { return this->volHalf; }
-
-    Layout &operator=(const Layout &other)
-    {
-        this->X = other.X;
-        this->Y = other.Y;
-        this->Z = other.Z;
-        this->T = other.T;
-        this->volFull = other.volFull;
-        this->volHalf = other.volHalf;
-        return *this;
-    }
-
-    void resize(const int _X, const int _Y, const int _Z, const int _T)
-    {
-        this->X = _X;
-        this->Y = _Y;
-        this->Z = _Z;
-        this->T = _T;
-        this->volFull = _X * _Y * _Z * _T;
-        this->volHalf = _X * _Y * _Z * _T / 2;
-        assert(volFull % 2 == 0);
-        assert(X % 2 == 0);
-    }
-
-    void resize(const int L) { this->resize(L, L, L, L); }
-};
-
-extern Layout layout;
-
-static inline int evenoddIndex(const int x, const int y, const int z, const int t, const Layout &lat)
-{
-    return (x + lat.X * (y + lat.Y * (z + lat.Z * t))) / 2 + (x + y + z + t) % 2 * lat.volHalf;
-}
-
-static inline int linearIndex(const int x, const int y, const int z, const int t, const Layout &lat)
-{
-    return (x + lat.X * (y + lat.Y * (z + lat.Z * t)));
-}
+#include "Layout.h"
 
 /**
  * @brief Field base class for public API
@@ -78,7 +29,7 @@ template <typename T>
 class Field {
   public:
     Field(const Layout &lat) : _lat(lat) { this->_p = new T[_lat.vol()]; }
-    Field() : Field(layout) {}
+    // Field() : _lat(layout) { this->_p = new T[_lat.vol()]; }
     virtual ~Field() { delete[] this->_p; }
 
     virtual void zero() {}
@@ -98,20 +49,29 @@ class Field {
     virtual const T &data(int i) const { return this->_p[i]; }
     virtual       T &data(int i)       { return this->_p[i]; }
 
-    virtual const T &operator()(int i) const { return this->data(i); }
-    virtual       T &operator()(int i)       { return this->data(i); }
+    virtual const T &operator()(int i) const { return this->_p[i]; }
+    virtual       T &operator()(int i)       { return this->_p[i]; }
+
+    virtual const T &lineardata(int x, int y, int z, int t) const { return this->_p[linearIndex(x, y, z, y, this->layout())]; }
+    virtual       T &lineradata(int x, int y, int z, int t)       { return this->_p[linearIndex(x, y, z, y, this->layout())]; }
 
     virtual const T &operator()(int x, int y, int z, int t) const { return this->_p[evenoddIndex(x, y, z, t, this->layout())]; }
     virtual       T &operator()(int x, int y, int z, int t)       { return this->_p[evenoddIndex(x, y, z, t, this->layout())]; }
     // clang-format on
   private:
     Layout _lat;
-    T *_p = nullptr;
+    T     *_p = nullptr;
 };
 
+/**
+ * @brief SpinorField class for spinor field
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class SpinorField : public Field<vec3<std::complex<T>>> {
   public:
+    typedef vec3<std::complex<T>> DataType;
     using Field<vec3<std::complex<T>>>::Field; // inherit constructor
 
     void random()
@@ -125,9 +85,16 @@ class SpinorField : public Field<vec3<std::complex<T>>> {
     }
 };
 
+/**
+ * @brief 
+ * 
+ * @tparam T 
+ */
 template <typename T>
 class SU3Field : public Field<mat33<std::complex<T>>> {
   public:
+    typedef mat33<std::complex<T>> DataType;
+
     using Field<mat33<std::complex<T>>>::Field; // inherit constructor
 
     void random()
@@ -147,28 +114,47 @@ class SU3Field : public Field<mat33<std::complex<T>>> {
     }
 };
 
-// U4 class for gauge field
-// One U4 data for each lattice site, with 4 components of su3 matrix (mat33)
-// U4[mu][r][c], mu=0,1,2,3, r=0,1,2, c=0,1,2
+/**
+ * @brief GaugeLinkField class for gauge link field
+ * one GaugeLinkField with four components of SU3Field, is  U1, U2, U3, vec4, each with 4 components of su3 matrix (mat33)
+ * 
+ * @tparam T 
+ */
 template <typename T>
-class U4 {
+class GaugeField {
   public:
-    U4() = default;
-    ~U4() = default;
+    typedef SU3Field<T> DataType;
 
     // clang-format off
-    inline const mat33<std::complex<T>> & &operator[](int i) const { return this->data[i]; }
-    inline       T &operator[](int i)       { return this->data[i]; }
+    GaugeField(const Layout &lat) { for (int mu = 0; mu < 4; mu++) { _U[mu] = new SU3Field<T>(lat); } }
+    ~GaugeField() { for (int mu = 0; mu < 4; mu++) { delete _U[mu]; } }
+    void random() { for (int mu = 0; mu < 4; mu++) { _U[mu]->random(); } }
+
+    const Layout &layout() const { return _U[0]->layout(); }
+          Layout &layout()       { return _U[0]->layout(); }
+
+    const DataType &operator[](int mu) const { return *_U[mu]; }
+          DataType &operator[](int mu)       { return *_U[mu]; }
     // clang-format on
 
   private:
-    mat33<std::complex<T>> data[4];
+    DataType *_U[4]; // gauge field
 };
 
+
+
+/**
+ * @brief GaugeFieldNew class for GaugeLinkField
+ * @note typedef vec4<mat33<std::complex<T>>>  DataType; \n
+ * for each site, there are four su3 matrices, each with 3x3 components
+ * 
+ * @tparam T 
+ */
 template <typename T>
-class GaugeField : public Field<U4<mat33<std::complex<T>>>> {
+class GaugeFieldNew : public Field<vec4<mat33<std::complex<T>>>> {
   public:
-    using Field<U4<std::complex<T>>>::Field; // inherit constructor
+    typedef vec4<mat33<std::complex<T>>> DataType;
+    using Field<DataType>::Field; // inherit constructor
 
     void random()
     {
