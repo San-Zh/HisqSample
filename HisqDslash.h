@@ -22,7 +22,7 @@ template <EvenOdd_t Leo, EvenOdd_t Reo>
 struct HisqDslashImpl {
     // 静态模板方法 call，用于执行Dslash操作，当前未实现
     template <typename T>
-    static void call(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+    static void call(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
     {
         throw std::runtime_error("Error: NO Implemented! Only <EVEN, ODD>, <ODD, EVEN>, and <FULL, FULL> are supported.");
     }
@@ -32,25 +32,51 @@ struct HisqDslashImpl {
 template <>
 struct HisqDslashImpl<EVEN, ODD> {
     template <typename T>
-    static void call(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+    static void call(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
     {
-#pragma omp parallel for collapse(2)
+        int xf = 0, xb = 0;
+        int yf = 0, yb = 0;
+        int zf = 0, zb = 0;
+        int tf = 0, tb = 0;
+#pragma omp parallel for collapse(2) private(xf, xb, yf, yb, zf, zb, tf, tb)
         for (int t = 0; t < layout.T; t++) {
             for (int z = 0; z < layout.Z; z++) {
                 for (int y = 0; y < layout.Y; y++) {
                     switch ((t + z + y) % 2) {
                     case EVEN:
                         for (int x = 0; x < layout.X; x += 2) { // EVEN(x) + EVEN(y+z+t) == EVEN
-                            int xf = (x + 1 + layout.X) % layout.X;
-                            int xb = (x - 1 + layout.X) % layout.X;
-                            spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            yf = (y + 1 + layout.Y) % layout.Y;
+                            yb = (y - 1 + layout.Y) % layout.Y;
+                            zf = (z + 1 + layout.Z) % layout.Z;
+                            zb = (z - 1 + layout.Z) % layout.Z;
+                            tf = (t + 1 + layout.T) % layout.T;
+                            tb = (t - 1 + layout.T) % layout.T;
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                            spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                            spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                            spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
                         }
                         break;
                     case ODD:
                         for (int x = 1; x < layout.X; x += 2) { // ODD(x) + ODD(y+z+t) == EVEN
-                            int xf = (x + 1 + layout.X) % layout.X;
-                            int xb = (x - 1 + layout.X) % layout.X;
-                            spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            yf = (y + 1 + layout.Y) % layout.Y;
+                            yb = (y - 1 + layout.Y) % layout.Y;
+                            zf = (z + 1 + layout.Z) % layout.Z;
+                            zb = (z - 1 + layout.Z) % layout.Z;
+                            tf = (t + 1 + layout.T) % layout.T;
+                            tb = (t - 1 + layout.T) % layout.T;
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                            spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                            spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                            spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
                         }
                         break;
                     }
@@ -64,25 +90,51 @@ struct HisqDslashImpl<EVEN, ODD> {
 template <>
 struct HisqDslashImpl<ODD, EVEN> {
     template <typename T>
-    static void call(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+    static void call(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
     {
-#pragma omp parallel for collapse(2)
+        int xf = 0, xb = 0;
+        int yf = 0, yb = 0;
+        int zf = 0, zb = 0;
+        int tf = 0, tb = 0;
+#pragma omp parallel for collapse(2) private(xf, xb, yf, yb, zf, zb, tf, tb)
         for (int t = 0; t < layout.T; t++) {
             for (int z = 0; z < layout.Z; z++) {
                 for (int y = 0; y < layout.Y; y++) {
                     switch ((t + z + y) % 2) {
                     case EVEN:
                         for (int x = 1; x < layout.X; x += 2) { // ODD(x) + EVEN(y+z+t) == ODD
-                            int xf = (x + 1 + layout.X) % layout.X;
-                            int xb = (x - 1 + layout.X) % layout.X;
-                            spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            yf = (y + 1 + layout.Y) % layout.Y;
+                            yb = (y - 1 + layout.Y) % layout.Y;
+                            zf = (z + 1 + layout.Z) % layout.Z;
+                            zb = (z - 1 + layout.Z) % layout.Z;
+                            tf = (t + 1 + layout.T) % layout.T;
+                            tb = (t - 1 + layout.T) % layout.T;
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                            spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                            spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                            spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
                         }
                         break;
                     case ODD:
                         for (int x = 0; x < layout.X; x += 2) { // EVEN(x) + ODD(y+z+t) == ODD
-                            int xf = (x + 1 + layout.X) % layout.X;
-                            int xb = (x - 1 + layout.X) % layout.X;
-                            spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            yf = (y + 1 + layout.Y) % layout.Y;
+                            yb = (y - 1 + layout.Y) % layout.Y;
+                            zf = (z + 1 + layout.Z) % layout.Z;
+                            zb = (z - 1 + layout.Z) % layout.Z;
+                            tf = (t + 1 + layout.T) % layout.T;
+                            tb = (t - 1 + layout.T) % layout.T;
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                            spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                            spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                            spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
                         }
                         break;
                     }
@@ -98,16 +150,31 @@ struct HisqDslashImpl<ODD, EVEN> {
 template <>
 struct HisqDslashImpl<FULL, FULL> {
     template <typename T>
-    static void call(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+    static void call(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
     {
-#pragma omp parallel for
+        int xf = 0, xb = 0;
+        int yf = 0, yb = 0;
+        int zf = 0, zb = 0;
+        int tf = 0, tb = 0;
+#pragma omp parallel for collapse(2) private(xf, xb, yf, yb, zf, zb, tf, tb)
         for (int t = 0; t < layout.T; t++) {
             for (int z = 0; z < layout.Z; z++) {
                 for (int y = 0; y < layout.Y; y++) {
                     for (int x = 0; x < layout.X; x += 1) {
-                        int xf = (x + 1 + layout.X) % layout.X;
-                        int xb = (x - 1 + layout.X) % layout.X;
-                        spinorOut(x, y, z, t) += mul(U0(x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U0(xb, y, z, t), spinorIn(xb, y, z, t));
+                        xf = (x + 1 + layout.X) % layout.X;
+                        xb = (x - 1 + layout.X) % layout.X;
+                        yf = (y + 1 + layout.Y) % layout.Y;
+                        yb = (y - 1 + layout.Y) % layout.Y;
+                        zf = (z + 1 + layout.Z) % layout.Z;
+                        zb = (z - 1 + layout.Z) % layout.Z;
+                        tf = (t + 1 + layout.T) % layout.T;
+                        tb = (t - 1 + layout.T) % layout.T;
+                        xf = (x + 1 + layout.X) % layout.X;
+                        xb = (x - 1 + layout.X) % layout.X;
+                        spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                        spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                        spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                        spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
                     }
                 }
             }
@@ -119,7 +186,7 @@ struct HisqDslashImpl<FULL, FULL> {
 template <>
 struct HisqDslashImpl<FULL, FULL> {
     template <typename T>
-    static void call(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+    static void call(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
     {
         HisqDslashImpl<EVEN, ODD>::call(spinorOut, U0, spinorIn);
         HisqDslashImpl<ODD, EVEN>::call(spinorOut, U0, spinorIn);
@@ -139,7 +206,7 @@ struct HisqDslashImpl<FULL, FULL> {
 //   Reo - 偶奇类型
 //   T - 数据类型
 template <EvenOdd_t Leo, EvenOdd_t Reo, typename T>
-void HisqDslash(SpinorField<T> &spinorOut, const SU3Field<T> &U0, const SpinorField<T> &spinorIn)
+void HisqDslash(SpinorField<T> &spinorOut, const GaugeField<T> &U, const SpinorField<T> &spinorIn)
 {
-    HisqDslashImpl<Leo, Reo>::call(spinorOut, U0, spinorIn);
+    HisqDslashImpl<Leo, Reo>::call(spinorOut, U, spinorIn);
 }

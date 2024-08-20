@@ -88,6 +88,7 @@ class vec3 {
     T data[3];
 };
 
+
 template <typename T>
 vec3<T> operator-(const vec3<T> &a, const vec3<T> &b)
 {
@@ -97,3 +98,34 @@ vec3<T> operator-(const vec3<T> &a, const vec3<T> &b)
     res[2] = a[2] - b[2];
     return res;
 }
+
+template <typename T>
+T innerProduct(const vec3<T> &a, const vec3<T> &b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+template <typename T>
+std::complex<double> innerProduct(const vec3<std::complex<T>> &a, const vec3<std::complex<T>> &b)
+{
+    throw std::runtime_error("This function To Be Checked");
+    return a[0] * std::conj(b[0]) + a[1] * std::conj(b[1]) + a[2] * std::conj(b[2]);
+}
+
+template <typename T>
+double norm2(const vec3<std::complex<T>> &a)
+{
+    return a[0].real() * a[0].real() + a[0].imag() * a[0].imag() + a[1].real() * a[1].real() + a[1].imag() * a[1].imag() + a[2].real() * a[2].real() + a[2].imag() * a[2].imag();
+}
+
+// template <>
+// double innerProduct<std::complex<double>>(const vec3<std::complex<double>> &a, const vec3<std::complex<double>> &b)
+// {
+//     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+// }
+
+// template <>
+// float innerProduct<std::complex<float>>(const vec3<std::complex<float>> &a, const vec3<std::complex<float>> &b)
+// {
+//     return a[0] * std::conj(b[0]) + a[1] * std::conj(b[1]) + a[2] * std::conj(b[2]);
+// }

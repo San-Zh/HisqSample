@@ -48,24 +48,27 @@ struct HisqDslashOptImpl<FULL, FULL> {
         int yf = 0, yb = 0;
         int zf = 0, zb = 0;
         int tf = 0, tb = 0;
+
+        const int STR = 2;
 #pragma omp parallel for private(xf, xb, yf, yb, zf, zb, tf, tb)
         for (int t = 0; t < layout.T; t++) {
             for (int z = 0; z < layout.Z; z++) {
                 for (int y = 0; y < layout.Y; y++) {
-                    for (int x = 0; x < layout.X; x++) {
-                        xf = (x + 1 + layout.X) % layout.X;
-                        xb = (x - 1 + layout.X) % layout.X;
-                        yf = (y + 1 + layout.Y) % layout.Y;
-                        yb = (y - 1 + layout.Y) % layout.Y;
-                        zf = (z + 1 + layout.Z) % layout.Z;
-                        zb = (z - 1 + layout.Z) % layout.Z;
-                        tf = (t + 1 + layout.T) % layout.T;
-                        tb = (t - 1 + layout.T) % layout.T;
-
-                        spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
-                        spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
-                        spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
-                        spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
+                    for (int ix = 0; ix < layout.X; ix += STR) {
+                        for (int x = ix; x < ix + STR; x++) {
+                            xf = (x + 1 + layout.X) % layout.X;
+                            xb = (x - 1 + layout.X) % layout.X;
+                            yf = (y + 1 + layout.Y) % layout.Y;
+                            yb = (y - 1 + layout.Y) % layout.Y;
+                            zf = (z + 1 + layout.Z) % layout.Z;
+                            zb = (z - 1 + layout.Z) % layout.Z;
+                            tf = (t + 1 + layout.T) % layout.T;
+                            tb = (t - 1 + layout.T) % layout.T;
+                            spinorOut(x, y, z, t) += mul(U[0](x, y, z, t), spinorIn(xf, y, z, t)) - mdagv(U[0](xb, y, z, t), spinorIn(xb, y, z, t));
+                            spinorOut(x, y, z, t) += mul(U[1](x, y, z, t), spinorIn(x, yf, z, t)) - mdagv(U[1](x, yb, z, t), spinorIn(x, yb, z, t));
+                            spinorOut(x, y, z, t) += mul(U[2](x, y, z, t), spinorIn(x, y, zf, t)) - mdagv(U[2](x, y, zb, t), spinorIn(x, y, zb, t));
+                            spinorOut(x, y, z, t) += mul(U[3](x, y, z, t), spinorIn(x, y, z, tf)) - mdagv(U[3](x, y, z, tb), spinorIn(x, y, z, tb));
+                        }
                     }
                 }
             }
@@ -93,7 +96,6 @@ struct HisqDslashOptImpl<FULL, FULL> {
                         zb = (z - 1 + layout.Z) % layout.Z;
                         tf = (t + 1 + layout.T) % layout.T;
                         tb = (t - 1 + layout.T) % layout.T;
-
                         spinorOut(x, y, z, t) += mul(U4(x, y, z, t)[0], spinorIn(xf, y, z, t)) - mdagv(U4(xb, y, z, t)[0], spinorIn(xb, y, z, t));
                         spinorOut(x, y, z, t) += mul(U4(x, y, z, t)[1], spinorIn(x, yf, z, t)) - mdagv(U4(x, yb, z, t)[1], spinorIn(x, yb, z, t));
                         spinorOut(x, y, z, t) += mul(U4(x, y, z, t)[2], spinorIn(x, y, zf, t)) - mdagv(U4(x, y, zb, t)[2], spinorIn(x, y, zb, t));

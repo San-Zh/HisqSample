@@ -31,8 +31,10 @@ void test_HisqDslash(const int numLoop = 50)
 
     SpinorField<float> spinorIn(layout);
     SpinorField<float> spinorOut(layout);
+    SpinorField<float> spinorOut2(layout);
     spinorIn.random();
-    spinorOut.random();
+    // spinorOut.random();
+    // spinorOut2.random();
 
     GaugeField<float> gaugeLink(layout);
     gaugeLink.random();
@@ -50,52 +52,58 @@ void test_HisqDslash(const int numLoop = 50)
 
 
     {
-
         int    mu        = 0;
         double time      = 0.0;
-        double flops     = (double) ((6 + 2) * 9 * 2 * numLoop) * (double) layout.volh() * 1.0e-9;
-        double bandwidth = (double) ((3 + 3 + 9) * sizeof(std::complex<float>) * numLoop) * (double) layout.volh() * 1.0e-9;
+        double flops     = (double) ((6 + 2) * 9 * 8 * numLoop) * (double) layout.volh() * 1.0e-9;
+        double bandwidth = (double) (((3 + 3 + 9 + 9) * 4 + 3) * sizeof(std::complex<float>) * numLoop) * (double) layout.volh() * 1.0e-9;
         double intensity = flops / bandwidth;
 
         // Warm up
-        for (int i = 0; i < 10; i++) {
-            HisqDslash<ODD, EVEN>(spinorOut, gaugeLink[mu], spinorIn);
-            HisqDslash<EVEN, ODD>(spinorOut, gaugeLink[mu], spinorIn);
-            HisqDslash<FULL, FULL>(spinorOut, gaugeLink[mu], spinorIn);
+        for (int i = 0; i < 0; i++) {
+            HisqDslash<ODD, EVEN>(spinorOut, gaugeLink, spinorIn);
+            HisqDslash<EVEN, ODD>(spinorOut, gaugeLink, spinorIn);
+            HisqDslash<FULL, FULL>(spinorOut2, gaugeLink, spinorIn);
         }
 
+        // test HisqDslash<EVEN, ODD>, HisqDslash<ODD, EVEN>, and HisqDslash<FULL, FULL>
         t.reset();
-        for (int i = 0; i < numLoop; i++) { HisqDslash<EVEN, ODD>(spinorOut, gaugeLink[mu], spinorIn); }
+        for (int i = 0; i < numLoop; i++) { HisqDslash<EVEN, ODD>(spinorOut, gaugeLink, spinorIn); }
         time = t.use_sec();
-        printf("D_{%d}<E,O>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", mu, time, flops / time, bandwidth / time, intensity);
-
-        t.reset();
-        for (int i = 0; i < numLoop; i++) { HisqDslash<ODD, EVEN>(spinorOut, gaugeLink[mu], spinorIn); }
-        time = t.use_sec();
-        printf("D_{%d}<O,E>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", mu, time, flops / time, bandwidth / time, intensity);
-
-
+        printf("Dslash<E,O>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", time, flops / time, bandwidth / time, intensity);
 
         t.reset();
-        for (int i = 0; i < numLoop; i++) { HisqDslash<FULL, FULL>(spinorOut, gaugeLink[mu], spinorIn); }
+        for (int i = 0; i < numLoop; i++) { HisqDslash<ODD, EVEN>(spinorOut, gaugeLink, spinorIn); }
         time = t.use_sec();
-        printf("D_{%d}<F,F>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", mu, time, 2.0 * flops / time, 2.0 * bandwidth / time, intensity);
+        printf("Dslash<O,E>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", time, flops / time, bandwidth / time, intensity);
+
+        t.reset();
+        for (int i = 0; i < numLoop; i++) { HisqDslash<FULL, FULL>(spinorOut2, gaugeLink, spinorIn); }
+        time = t.use_sec();
+        printf("Dslash<F,F>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte intensity\n", time, 2.0 * flops / time, 2.0 * bandwidth / time, intensity);
     }
+
+#ifdef Debug
+    double diff;
+    for (int i = 0; i < layout.vol(); i++) { diff = norm2(spinorOut2(i) - spinorOut(i)); }
+    printf("diff: %g\n", diff);
+#endif
+
+    // test HisqDslashOpt<FULL, FULL> and HisqDslashOptNew<FULL, FULL>
     {
         double time      = 0.0;
-        double flops     = (double) ((6 + 2) * 3 * 3 * 2 * 4 * numLoop) * (double) layout.vol() * 1.0e-9;
-        double bandwidth = (double) ((3 + (3 + 3) * 4 + 9 * 2 * 4) * sizeof(std::complex<float>) * numLoop) * (double) layout.vol() * 1.0e-9;
+        double flops     = (double) ((6 + 2) * 9 * 8 * numLoop) * (double) layout.vol() * 1.0e-9;
+        double bandwidth = (double) ((3 + (3 + 3 + 9 + 9) * 4) * sizeof(std::complex<float>) * numLoop) * (double) layout.vol() * 1.0e-9;
         double intensity = flops / bandwidth;
 
         t.reset();
-        for (int i = 0; i < numLoop; i++) { HisqDslashOpt<FULL, FULL>(spinorOut, gaugeLink, spinorIn); }
+        for (int i = 0; i < numLoop; i++) { HisqDslashOpt<FULL, FULL>(spinorOut2, gaugeLink, spinorIn); }
         time = t.use_sec();
-        printf("Dslash<F,F> Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte\n", time, flops / time, bandwidth / time, intensity);
+        printf("Dslash<F,F>  Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte\n", time, flops / time, bandwidth / time, intensity);
 
-        t.reset();
-        for (int i = 0; i < numLoop; i++) { HisqDslashOptNew<FULL, FULL>(spinorOut, gaugeLinkNew, spinorIn); }
-        time = t.use_sec();
-        printf("Dslash<F,F> Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte\n", time, flops / time, bandwidth / time, intensity);
+        // t.reset();
+        // for (int i = 0; i < numLoop; i++) { HisqDslashOptNew<FULL, FULL>(spinorOut, gaugeLinkNew, spinorIn); }
+        // time = t.use_sec();
+        // printf("Dslash<F,F> Performance: %8.3lf sec, %8.3lf GFLOPS/s, %8.3lf GB/s, %8.3lf flops/byte\n", time, flops / time, bandwidth / time, intensity);
     }
 }
 
