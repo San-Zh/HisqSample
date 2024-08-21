@@ -26,7 +26,7 @@ clean:
 	rm *.o main_HisqDslashProf.bin -rf
 
 run: main_HisqDslashProf.bin
-	export OMP_NUM_THREADS=4 && \
+	export OMP_NUM_THREADS=8 && \
 	export OMP_PROC_BIND=close && \
 	export OMP_PLACES=cores \
 	&& ./main_HisqDslashProf.bin  # 2>&1 | tee log.output.txt

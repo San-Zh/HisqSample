@@ -20,14 +20,42 @@ class mat33;
 template <typename T>
 class mat33 {
   public:
-    mat33() = default;
+    mat33()  = default;
     ~mat33() = default;
 
     // clang-format off
 
     inline const vec3<T> &operator[](int i) const { return this->data[i]; }
     inline       vec3<T> &operator[](int i)       { return this->data[i]; }
+
+    inline const mat33<T> &hermitian(const mat33<T> &other) const {
+        mat33<T> res;
+        res[0][0] = std::conj(other[0][0]);
+        res[1][0] = std::conj(other[0][1]);
+        res[2][0] = std::conj(other[0][2]);
+        res[0][1] = std::conj(other[1][0]);
+        res[1][1] = std::conj(other[1][1]);
+        res[2][1] = std::conj(other[1][2]);
+        res[0][2] = std::conj(other[2][0]);
+        res[1][2] = std::conj(other[2][1]);
+        res[2][2] = std::conj(other[2][2]);
+        return res;
+    }
     
+    inline mat33<T> &hermitian(const mat33<T> &other){
+        mat33<T> res;
+        res[0][0] = std::conj(other[0][0]);
+        res[1][0] = std::conj(other[0][1]);
+        res[2][0] = std::conj(other[0][2]);
+        res[0][1] = std::conj(other[1][0]);
+        res[1][1] = std::conj(other[1][1]);
+        res[2][1] = std::conj(other[1][2]);
+        res[0][2] = std::conj(other[2][0]);
+        res[1][2] = std::conj(other[2][1]);
+        res[2][2] = std::conj(other[2][2]);
+        return res;
+    }
+
     // friend template<Tp> vec3<Tp> maulv(const mat33<T> &A, const vec3<T> &b);
     // friend template<Tp> vec3<Tp> mdagv(const mat33<T> &A, const vec3<T> &b);
 

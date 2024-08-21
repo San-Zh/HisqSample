@@ -30,6 +30,7 @@ class Field {
   public:
     Field(const Layout &lat) : _lat(lat) { this->_p = new T[_lat.vol()]; }
     // Field() : _lat(layout) { this->_p = new T[_lat.vol()]; }
+    // virtual Field(const Field<T> &other) : _lat(other._lat){};
     virtual ~Field() { delete[] this->_p; }
 
     virtual void zero() {}
@@ -114,6 +115,9 @@ class SU3Field : public Field<mat33<std::complex<T>>> {
     }
 };
 
+template <typename T>
+class GaugeFieldNew;
+
 /**
  * @brief GaugeLinkField class for gauge link field
  * one GaugeLinkField with four components of SU3Field, is  U1, U2, U3, vec4, each with 4 components of su3 matrix (mat33)
@@ -127,6 +131,7 @@ class GaugeField {
 
     // clang-format off
     GaugeField(const Layout &lat) { for (int mu = 0; mu < 4; mu++) { _U[mu] = new SU3Field<T>(lat); } }
+    GaugeField(const GaugeFieldNew<T> &other){ for (int i = 0; i < other.layout().vol(); i++) { for (int mu = 0; mu < 4; mu++) { (*this)[mu](i) = other(i)[mu]; } } }
     ~GaugeField() { for (int mu = 0; mu < 4; mu++) { delete _U[mu]; } }
     void random() { for (int mu = 0; mu < 4; mu++) { _U[mu]->random(); } }
 
@@ -136,6 +141,15 @@ class GaugeField {
     const DataType &operator[](int mu) const { return *_U[mu]; }
           DataType &operator[](int mu)       { return *_U[mu]; }
     // clang-format on
+
+    // GaugeFieldNew<T> toGaugeFieldNew()
+    // {
+    //     GaugeFieldNew<T> res(this->layout());
+    //     for (size_t i = 0; i < this->layout().vol(); i++) {
+    //         for (int mu = 0; mu < 4; mu++) { res(i)[mu] = (*this)[mu](i); }
+    //     }
+    //     return res;
+    // }
 
   private:
     DataType *_U[4]; // gauge field
@@ -154,7 +168,15 @@ template <typename T>
 class GaugeFieldNew : public Field<vec4<mat33<std::complex<T>>>> {
   public:
     typedef vec4<mat33<std::complex<T>>> DataType;
+
     using Field<DataType>::Field; // inherit constructor
+
+    GaugeFieldNew(const GaugeField<T> &other) : Field<DataType>(other.layout())
+    {
+        for (int i = 0; i < other.layout().vol(); i++) {
+            for (int mu = 0; mu < 4; mu++) { this->data(i)[mu] = other[mu](i); }
+        }
+    }
 
     void random()
     {
@@ -168,3 +190,11 @@ class GaugeFieldNew : public Field<vec4<mat33<std::complex<T>>>> {
         }
     }
 };
+
+// template <typename T>
+// void convertToGaugeFieldNew(GaugeFieldNew<T> res, const GaugeField<T> &other){
+//   // assert(res.layout() == other.layout());
+//     for (int i = 0; i < other.layout().vol(); i++) {
+//         for (int mu = 0; mu < 4; mu++) { res(i)[mu] = other[mu](i); }
+//     }
+// }

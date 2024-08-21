@@ -30,9 +30,9 @@ struct Layout {
     Layout(const int L) { resize(L, L, L, L); }
     Layout(const Layout &other) { *this = other; } // copy constructor
 
-    int       &vol() { return this->volFull; }
+    // int       &vol() { return this->volFull; }
     const int &vol() const { return this->volFull; }
-    int       &volh() { return this->volHalf; }
+    // int       &volh() { return this->volHalf; }
     const int &volh() const { return this->volHalf; }
 
     Layout &operator=(const Layout &other)
